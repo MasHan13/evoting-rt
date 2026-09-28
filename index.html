@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E-Voting Ketua RT</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 30px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,.08);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #1976d2;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #aaa;
+    }
+
+    .candidate {
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+
+    .candidate.selected {
+      border-color: #1976d2;
+      background: #eef6ff;
+    }
+
+    .candidate img {
+      width: 100%;
+      max-height: 250px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .candidate-name {
+      font-weight: bold;
+      font-size: 18px;
+      text-align: center;
+    }
+
+    .message {
+      margin-top: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    #votePage,
+    #successPage {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <div id="loginPage">
+
+    <h1>E-Voting Ketua RT</h1>
+
+    <input
+      type="text"
+      id="phone"
+      placeholder="Nomor WhatsApp"
+    >
+
+    <input
+      type="text"
+      id="code"
+      placeholder="Kode Voting"
+    >
+
+    <button onclick="verify()">
+      MASUK KE PEMILIHAN
+    </button>
+
+    <div id="loginMessage" class="message"></div>
+
+  </div>
+
+
+  <!-- VOTING -->
+  <div id="votePage">
+
+    <h1>Pilih Calon Ketua RT</h1>
+
+    <div id="candidates"></div>
+
+    <button id="voteButton" onclick="submitVote()" disabled>
+      KIRIM SUARA
+    </button>
+
+    <div id="voteMessage" class="message"></div>
+
+  </div>
+
+
+  <!-- SUCCESS -->
+  <div id="successPage">
+
+    <h1>✅ Terima Kasih</h1>
+
+    <p style="text-align:center;">
+      Suara Anda berhasil dicatat.
+    </p>
+
+  </div>
+
+</div>
+
+
+<script>
+
+  /*
+   * URL WEB APP APPS SCRIPT V2
+   * NANTI KITA ISI DI SINI
+   */
+
+  const API_URL = "https://script.google.com/macros/s/AKfycbx6p1LmR8H9z8Xh1Sbz1qgQYLIJD-1F8FLZ8adDlcoQIzmVgZgNXVb2td5QoZfTzecc-g/exec";
+
+
+  let votingToken = null;
+  let selectedCandidate = null;
+
+
+  function verify() {
+
+    const phone =
+      document.getElementById("phone").value.trim();
+
+    const code =
+      document.getElementById("code").value.trim();
+
+    const message =
+      document.getElementById("loginMessage");
+
+    if (!phone || !code) {
+
+      message.textContent =
+        "Nomor WhatsApp dan kode voting wajib diisi.";
+
+      return;
+    }
+
+    message.textContent = "Memeriksa data...";
+
+
+    fetch(API_URL, {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type": "text/plain"
+      },
+
+      body: JSON.stringify({
+        action: "verify",
+        phone: phone,
+        code: code
+      })
+
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+      if (!data.ok) {
+
+        message.textContent =
+          data.message;
+
+        return;
+      }
+
+
+      votingToken = data.token;
+
+      showCandidates(data.candidates);
+
+    })
+
+    .catch(error => {
+
+      message.textContent =
+        "Gagal terhubung ke server.";
+
+      console.error(error);
+
+    });
+
+  }
+
+
+  function showCandidates(candidates) {
+
+    document.getElementById("loginPage")
+      .style.display = "none";
+
+    document.getElementById("votePage")
+      .style.display = "block";
+
+
+    const container =
+      document.getElementById("candidates");
+
+    container.innerHTML = "";
+
+
+    candidates.forEach(candidate => {
+
+      const div =
+        document.createElement("div");
+
+      div.className = "candidate";
+
+
+      div.innerHTML = `
+
+        ${
+          candidate.foto
+          ? `<img src="${candidate.foto}">`
+          : ""
+        }
+
+        <div class="candidate-name">
+          ${candidate.no}. ${candidate.nama}
+        </div>
+
+      `;
+
+
+      div.onclick = function() {
+
+        document
+          .querySelectorAll(".candidate")
+          .forEach(el =>
+            el.classList.remove("selected")
+          );
+
+
+        div.classList.add("selected");
+
+        selectedCandidate =
+          candidate.no;
+
+
+        document
+          .getElementById("voteButton")
+          .disabled = false;
+
+      };
+
+
+      container.appendChild(div);
+
+    });
+
+  }
+
+
+  function submitVote() {
+
+    if (!votingToken ||
+        !selectedCandidate) {
+
+      return;
+    }
+
+
+    const button =
+      document.getElementById("voteButton");
+
+    const message =
+      document.getElementById("voteMessage");
+
+
+    button.disabled = true;
+
+    message.textContent =
+      "Menyimpan suara...";
+
+
+    fetch(API_URL, {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type": "text/plain"
+      },
+
+      body: JSON.stringify({
+
+        action: "vote",
+
+        token: votingToken,
+
+        candidateNo: selectedCandidate
+
+      })
+
+    })
+
+    .then(response => response.json())
+
+    .then(data => {
+
+      if (!data.ok) {
+
+        message.textContent =
+          data.message;
+
+        button.disabled = false;
+
+        return;
+      }
+
+
+      document.getElementById("votePage")
+        .style.display = "none";
+
+      document.getElementById("successPage")
+        .style.display = "block";
+
+    })
+
+    .catch(error => {
+
+      message.textContent =
+        "Gagal mengirim suara.";
+
+      button.disabled = false;
+
+      console.error(error);
+
+    });
+
+  }
+
+</script>
+
+</body>
+</html>
